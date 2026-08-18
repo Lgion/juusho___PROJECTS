@@ -151,7 +151,8 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   phoneNumber: string;
-  role: UserRole;
+  roles: UserRole[];               // Cumul de rôles possible (ex: ['PROPRIETAIRE', 'ADMIN_SUPER'])
+  primaryRole: UserRole;          // Rôle affiché par défaut dans la navigation
   isAdminSuper: boolean;           // Détecté si l'email figure dans EMAIL_ADMIN
 
   // Spécifique Prestataire BTP
@@ -170,10 +171,10 @@ export interface UserProfile {
     monthlySalary: number;
   };
 
-  bankDetails?: {                  // Relevé d'Identité Bancaire / Mobile Money
-    mobileMoneyNumber?: string;    // Wave / Orange / MTN
+  bankDetails?: {                  // Relevé d'Identité Bancaire / Coordonnées de paiement
     iban?: string;
     bic?: string;
+    mobileMoneyNumber?: string;
   };
 
   createdAt: string;
@@ -214,27 +215,124 @@ export interface WorkOrder {
 
 ```typescript
 export type TransactionType = 'LOYER' | 'PAIEMENT_PRESTATAIRE_BTP' | 'SALAIRE_EMPLOYE' | 'DEPOT_GARANTIE' | 'COMMISSION_VENTE';
-export type PaymentMethod = 'STRIPE_CARD' | 'MOBILE_MONEY_WAVE' | 'MOBILE_MONEY_ORANGE' | 'VIREMENT_SEPA';
+export type PaymentMethod = 'STRIPE_CARD' | 'VIREMENT_SEPA' | 'PRALEVEMENT_AUTO' | 'MOBILE_MONEY_DIRECT';
 
 export interface Transaction {
   _id: string;
   propertyId?: string;
   workOrderId?: string;
+  leaseId?: string;               // Lien direct avec le bail si type LOYER
   senderClerkId: string;
   receiverClerkId: string;
-  amount: number;
+  amount: number;                 // Montant total prélevé
+  rentAmount?: number;            // Part loyer pur (pour bilan comptable / NOI)
+  chargesAmount?: number;         // Part charges locatives
   currency: 'FCFA' | 'EUR' | 'USD';
   transactionType: TransactionType;
   paymentMethod: PaymentMethod;
   status: 'EN_ATTENTE' | 'SECUESTRE_BLOQUE' | 'EFFECTUE' | 'ECHOUE' | 'REMBOURSE';
-  externalReference?: string;    // ID Stripe ou Référence Mobile Money
+  externalReference?: string;    // ID Stripe ou référence bancaire
   createdAt: string;
 }
 ```
 
 ---
 
-## 5. Modèle des Notifications Ciblées (`Notification`)
+## 5. Modèle du Bail & Contrat Locatif (`Lease`)
+
+```typescript
+export type LeaseStatus = 'ACTIF' | 'PREAVIS' | 'EXPIRE' | 'RESILIE' | 'EN_ATTENTE_SIGNATURE';
+
+export interface Lease {
+  _id: string;
+  propertyId: string;
+  tenantClerkId: string;
+  ownerClerkId: string;
+  startDate: string;              // ISO 8601
+  endDate: string;                // ISO 8601
+  monthlyRent: number;            // Loyer mensuel Hors Charges
+  charges: number;                // Charges locatives mensuelles
+  securityDeposit: number;        // Dépôt de garantie
+  leaseStatus: LeaseStatus;
+  renewalType: 'TACITE_RECONDUCTION' | 'RENOUVELLEMENT_EXPLICITE' | 'FERME';
+  noticePeriodMonths: number;     // Préavis de résiliation en mois
+  signedDocumentUrl?: string;     // URL du PDF du bail signé
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+---
+
+## 6. Modèles Complémentaires (`AuditLog`, `Review`, `PurchaseOffer`, `DocumentEntity`)
+
+### A. Journal d'Audit (`AuditLog`)
+```typescript
+export interface AuditLog {
+  _id: string;
+  actorClerkId: string;
+  action: 'SERRURE_DEVERROUILLEE' | 'CREATION_CODE_PIN' | 'ACCES_FLUX_CAMERA' 
+    | 'VIREMENT_SEQUESTRE' | 'MODIFICATION_PRIX' | 'SUPPRESSION_BIEN' | 'CHANGEMENT_ROLE';
+  targetEntityType: 'Property' | 'User' | 'WorkOrder' | 'Transaction' | 'ConnectedDevice' | 'Lease';
+  targetEntityId: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  geolocation?: { lat: number; lng: number };
+  timestamp: string;
+}
+```
+
+### B. Evaluation & Avis Artisan (`Review`)
+```typescript
+export interface Review {
+  _id: string;
+  workOrderId: string;
+  authorClerkId: string;          // Propriétaire / Gestionnaire ayant noté
+  targetBtpClerkId: string;       // Artisan BTP noté
+  rating: number;                 // Note de 1 à 5
+  comment: string;
+  createdAt: string;
+}
+```
+
+### C. Offre d'Achat Immobilier (`PurchaseOffer`)
+```typescript
+export type OfferStatus = 'EN_ATTENTE' | 'ACCEPTEE' | 'REFUSEE' | 'CONTRE_PROPOSITION' | 'EXPIREE';
+
+export interface PurchaseOffer {
+  _id: string;
+  propertyId: string;
+  buyerClerkId: string;
+  sellerClerkId: string;
+  offeredPrice: number;           // Montant proposé en FCFA / EUR
+  validUntil: string;             // Date d'expiration de l'offre
+  suspensiveConditions?: string[];// ex: "Obtention prêt bancaire", "Diagnostic technique"
+  status: OfferStatus;
+  createdAt: string;
+}
+```
+
+### D. Gestion Documentaire & GED (`DocumentEntity`)
+```typescript
+export type DocumentCategory = 'BAIL_CONTRAT' | 'QUITTANCE_LOYER' | 'DEVIS_BTP' | 'DIAGNOSTIC' | 'PHOTO_ETAT_DES_LIEUX' | 'PIECE_IDENTITE';
+
+export interface DocumentEntity {
+  _id: string;
+  title: string;
+  category: DocumentCategory;
+  fileUrl: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  associatedEntityType?: 'Property' | 'Lease' | 'WorkOrder' | 'User';
+  associatedEntityId?: string;
+  uploadedByClerkId: string;
+  createdAt: string;
+}
+```
+
+---
+
+## 7. Modèle des Notifications Ciblées (`Notification`)
 
 ```typescript
 export interface Notification {
@@ -252,11 +350,12 @@ export interface Notification {
 
 ---
 
-## 6. Règles de Modification en Cascade & Intégrité
+## 8. Règles de Modification en Cascade & Intégrité
 
 1. **Suppression d'un Bien (`Property`)** :
-   - Déclenche l'archivage ou l'annulation en cascade de toutes les demandes de travail `WorkOrder` non terminées.
+   - Déclenche l'archivage ou l'annulation en cascade de toutes les demandes de travail `WorkOrder` et baux `Lease` associés.
    - Désactive les codes PIN d'accès temporaires sur les serrures `connectedDevices`.
    - Ne supprime **pas** les `Transactions` financières (conservation comptable obligatoire pour les rapports quinquennaux).
-2. **Changement d'État de Bien (`FOR_SALE` -> `LOUE_OCCUPE`)** :
-   - Met à jour automatiquement les droits d'accès domotiques pour accorder au nouveau locataire l'accès aux commandes d'éclairage et serrures.
+2. **Changement d'État de Bien (`EN_VENTE` -> `LOUE_OCCUPE`)** :
+   - Met à jour automatiquement les droits d'accès domotiques pour accorder au nouveau locataire du bail `Lease` l'accès aux commandes d'éclairage et serrures.
+

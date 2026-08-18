@@ -1,10 +1,10 @@
 # 06 - Données Factices et Jeu d'Essai (Mock Dataset)
 
-Ce document fournit un jeu de données JSON complet et réaliste prêt à être importé dans **Dexie.js** (IndexedDB local) et **MongoDB Atlas** pour le développement et la démonstration.
+Ce document fournit un jeu de données JSON complet et réaliste prêt à être importé dans **Dexie.js** (IndexedDB local) et **MongoDB Atlas** pour le développement, les tests d'intégration et la démonstration.
 
 ---
 
-## 1. Jeu d'Essai des Utilisateurs (`users.json`)
+## 1. Jeu d'Essai des Utilisateurs Multi-Rôles (`users.json`)
 
 ```json
 [
@@ -15,7 +15,8 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "firstName": "Cyril",
     "lastName": "Raymond",
     "phoneNumber": "+2250701020304",
-    "role": "ADMIN_SUPER",
+    "roles": ["PROPRIETAIRE", "ADMIN_SUPER"],
+    "primaryRole": "ADMIN_SUPER",
     "isAdminSuper": true,
     "createdAt": "2026-01-10T08:00:00.000Z"
   },
@@ -26,7 +27,8 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "firstName": "Jean-Marc",
     "lastName": "Kouassi",
     "phoneNumber": "+2250505060708",
-    "role": "PROPRIETAIRE",
+    "roles": ["PROPRIETAIRE"],
+    "primaryRole": "PROPRIETAIRE",
     "isAdminSuper": true,
     "createdAt": "2026-01-12T09:30:00.000Z"
   },
@@ -37,7 +39,8 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "firstName": "Amine",
     "lastName": "Diallo",
     "phoneNumber": "+2250102030405",
-    "role": "LOCATAIRE",
+    "roles": ["LOCATAIRE"],
+    "primaryRole": "LOCATAIRE",
     "isAdminSuper": false,
     "createdAt": "2026-02-01T10:15:00.000Z"
   },
@@ -48,7 +51,8 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "firstName": "Koffi",
     "lastName": "Brou",
     "phoneNumber": "+2250708091011",
-    "role": "PRESTATAIRE_BTP",
+    "roles": ["PRESTATAIRE_BTP"],
+    "primaryRole": "PRESTATAIRE_BTP",
     "isAdminSuper": false,
     "btpDetails": {
       "companyName": "Brou & Fils Plomberie Sarl",
@@ -59,9 +63,39 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
       "isVerified": true
     },
     "bankDetails": {
+      "iban": "CI93CI0120100100200300400567",
+      "bic": "ECOBCIAC",
       "mobileMoneyNumber": "+2250708091011"
     },
     "createdAt": "2026-01-15T11:00:00.000Z"
+  },
+  {
+    "_id": "user_buyer_01",
+    "clerkUserId": "user_buyer_55443322",
+    "email": "sarah.traore@example.com",
+    "firstName": "Sarah",
+    "lastName": "Traoré",
+    "phoneNumber": "+2250504030201",
+    "roles": ["PROSPECT_ACHETEUR"],
+    "primaryRole": "PROSPECT_ACHETEUR",
+    "isAdminSuper": false,
+    "createdAt": "2026-03-01T14:20:00.000Z"
+  },
+  {
+    "_id": "user_employe_01",
+    "clerkUserId": "user_emp_778899",
+    "email": "gestion.yves@juusho.app",
+    "firstName": "Yves",
+    "lastName": "Konan",
+    "phoneNumber": "+2250707070707",
+    "roles": ["EMPLOYE"],
+    "primaryRole": "EMPLOYE",
+    "isAdminSuper": false,
+    "employeeDetails": {
+      "assignedPropertiesIds": ["prop_villa_cocody", "prop_apt_assinie"],
+      "monthlySalary": 450000
+    },
+    "createdAt": "2026-01-20T09:00:00.000Z"
   }
 ]
 ```
@@ -192,7 +226,7 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "_id": "prop_apt_assinie",
     "clerkOwnerId": "user_proprio_88776655",
     "title": "Appartement Vue Mer Assinie (Synchro Airbnb)",
-    "description": "Superbe appartement bord de mer exploité en location saisonnière via Airbnb.",
+    "description": "Superbe appartement bord de mer exploité en location saisonnière via iCal et Channel Manager.",
     "propertyType": "APPARTEMENT",
     "listingStatus": "AIRBNB_EXTERNE",
     "address": {
@@ -221,13 +255,68 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "connectedDevices": [],
     "createdAt": "2026-02-10T11:00:00.000Z",
     "updatedAt": "2026-08-12T15:30:00.000Z"
+  },
+  {
+    "_id": "prop_terrain_bingerville",
+    "clerkOwnerId": "user_proprio_88776655",
+    "title": "Terrain Constructible 1 200 m² avec ACD - Bingerville",
+    "description": "Superbe parcelle plate viabilisée située dans une zone résidentielle en pleine expansion.",
+    "propertyType": "TERRAIN",
+    "listingStatus": "EN_VENTE",
+    "address": {
+      "street": "Route de la Fehre",
+      "city": "Abidjan",
+      "district": "Bingerville",
+      "country": "Côte d'Ivoire",
+      "coordinates": { "lat": 5.3550, "lng": -3.8850 }
+    },
+    "totalSurfaceSqm": 1200,
+    "totalRoomsCount": 0,
+    "bedroomsCount": 0,
+    "bathroomsCount": 0,
+    "isFurnished": false,
+    "financials": {
+      "sellingPrice": 85000000,
+      "estimatedPropertyTax": 150000
+    },
+    "rooms": [],
+    "scene3D": { "status": "NON_INITIALISE", "floorPlanUrls": [], "capturedPhotoUrls": [], "aiInstructions": { "recommendedAnglesCount": 0, "lightingQualityScore": 0, "missingZones": [] } },
+    "connectedDevices": [],
+    "createdAt": "2026-03-01T10:00:00.000Z",
+    "updatedAt": "2026-03-01T10:00:00.000Z"
   }
 ]
 ```
 
 ---
 
-## 3. Jeu d'Essai des Interventions BTP & Paiements (`workOrders.json` & `transactions.json`)
+## 3. Jeu d'Essai des Baux Locatifs (`leases.json`)
+
+```json
+[
+  {
+    "_id": "lease_cocody_01",
+    "propertyId": "prop_villa_cocody",
+    "tenantClerkId": "user_locataire_11223344",
+    "ownerClerkId": "user_proprio_88776655",
+    "startDate": "2026-02-01T00:00:00.000Z",
+    "endDate": "2027-01-31T23:59:59.000Z",
+    "monthlyRent": 2500000,
+    "charges": 200000,
+    "securityDeposit": 5000000,
+    "leaseStatus": "ACTIF",
+    "renewalType": "TACITE_RECONDUCTION",
+    "noticePeriodMonths": 3,
+    "signedDocumentUrl": "https://assets.juusho.app/documents/lease_cocody_diallo.pdf",
+    "createdAt": "2026-01-25T10:00:00.000Z",
+    "updatedAt": "2026-01-25T10:00:00.000Z"
+  }
+]
+```
+
+---
+
+## 4. Jeu d'Essai des Interventions BTP, Transactions & Offres (`workOrders.json`, `transactions.json`, `purchaseOffers.json`)
 
 ```json
 [
@@ -256,14 +345,17 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
   {
     "_id": "tx_loyer_aout",
     "propertyId": "prop_villa_cocody",
+    "leaseId": "lease_cocody_01",
     "senderClerkId": "user_locataire_11223344",
     "receiverClerkId": "user_proprio_88776655",
     "amount": 2700000,
+    "rentAmount": 2500000,
+    "chargesAmount": 200000,
     "currency": "FCFA",
     "transactionType": "LOYER",
-    "paymentMethod": "MOBILE_MONEY_WAVE",
+    "paymentMethod": "PRALEVEMENT_AUTO",
     "status": "EFFECTUE",
-    "externalReference": "WAVE_REF_9988776655",
+    "externalReference": "SEPA_REF_9988776655",
     "createdAt": "2026-08-05T10:00:00.000Z"
   },
   {
@@ -275,10 +367,59 @@ Ce document fournit un jeu de données JSON complet et réaliste prêt à être 
     "amount": 35000,
     "currency": "FCFA",
     "transactionType": "PAIEMENT_PRESTATAIRE_BTP",
-    "paymentMethod": "MOBILE_MONEY_ORANGE",
+    "paymentMethod": "STRIPE_CARD",
     "status": "EFFECTUE",
-    "externalReference": "OM_REF_11223344",
+    "externalReference": "STRIPE_CH_11223344",
     "createdAt": "2026-08-02T14:35:00.000Z"
+  }
+]
+```
+
+```json
+[
+  {
+    "_id": "offer_bingerville_01",
+    "propertyId": "prop_terrain_bingerville",
+    "buyerClerkId": "user_buyer_55443322",
+    "sellerClerkId": "user_proprio_88776655",
+    "offeredPrice": 80000000,
+    "validUntil": "2026-08-30T23:59:59.000Z",
+    "suspensiveConditions": ["Obtention certificat d'urbanisme", "Accord de prêt"],
+    "status": "EN_ATTENTE",
+    "createdAt": "2026-08-10T11:00:00.000Z"
+  }
+]
+```
+
+---
+
+## 5. Jeu d'Essai des Journaux & Avis (`auditLogs.json` & `reviews.json`)
+
+```json
+[
+  {
+    "_id": "log_01",
+    "actorClerkId": "user_locataire_11223344",
+    "action": "SERRURE_DEVERROUILLEE",
+    "targetEntityType": "ConnectedDevice",
+    "targetEntityId": "dev_lock_main",
+    "metadata": { "method": "PIN_CODE", "label": "Code Accès Locataire Diallo" },
+    "ipAddress": "160.154.12.34",
+    "timestamp": "2026-08-12T07:45:00.000Z"
+  }
+]
+```
+
+```json
+[
+  {
+    "_id": "rev_01",
+    "workOrderId": "wo_plomberie_01",
+    "authorClerkId": "user_proprio_88776655",
+    "targetBtpClerkId": "user_btp_plombier",
+    "rating": 5,
+    "comment": "Intervention rapide, propre et très professionnelle !",
+    "createdAt": "2026-08-03T09:00:00.000Z"
   }
 ]
 ```

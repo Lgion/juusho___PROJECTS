@@ -54,39 +54,60 @@ L'application **Juusho RealEstate Management** est une plate-forme de gestion im
   3. Dès qu'une connexion réseau est active, la file d'attente est dépilée et envoyée vers le serveur MongoDB Atlas via `TanStack Query`.
   4. Les notifications en temps réel et alertes domotiques sont reçues par Server-Sent Events (SSE) ou WebSockets et mises à jour dans Dexie via `Dexie LiveQuery`.
 
+### B.bis. Politique de Résolution de Conflits Dexie ↔ MongoDB & Schéma IndexedDB
+1. **Données Financières & Transactions (Loyer, Prix, Séquestre)** : Stratégie *Server-Authoritative*. Le serveur MongoDB est la source de vérité absolue. Les mutations locales sont soumises à la validation serveur et rejetées en cas d'incohérence.
+2. **Données Descriptives & Inventaires (Titre, description, pièces, équipements)** : Stratégie *Last-Write-Wins (LWW)* basée sur l'horodatage `updatedAt`. La modification la plus récente l'emporte.
+3. **Données IoT & Télémétrie** : Flux descendant uniquement (Serveur/Broker $\rightarrow$ Dexie Client). Le client ne modifie pas directement la télémétrie mais reçoit les mises à jour d'état.
+
+#### Schéma d'Indexation Dexie.js :
+```typescript
+const db = new Dexie('juusho_db');
+db.version(1).stores({
+  properties: '_id, clerkOwnerId, listingStatus, propertyType, [address.city+listingStatus]',
+  users: '_id, clerkUserId, primaryRole, email',
+  leases: '_id, propertyId, tenantClerkId, ownerClerkId, leaseStatus',
+  workOrders: '_id, propertyId, status, specialtyRequired',
+  transactions: '_id, propertyId, transactionType, status, createdAt',
+  notifications: '_id, targetUserClerkId, isRead, createdAt',
+  auditLogs: '_id, actorClerkId, action, timestamp',
+  syncQueue: '++id, tableName, operation, createdAt'
+});
+```
+
 ### C. Base de Données Cloud : MongoDB Atlas
 - **Connexion** : Définie par `MONGODB_URI` (`mongodb+srv://.../juusho`).
 - **Modèle NoSQL Document** : Offre une flexibilité maximale pour imbriquer la liste variable des pièces d'un bien meublé, les scènes 3D générées par IA et les télémétries d'objets connectés (IoT).
 
 ### D. Authentification & Sécurité : Clerk Auth
-- **Configuration** : Clés `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY`.
-- **Rôles & Métadonnées** : Les rôles (`PROPRIETAIRE`, `LOCATAIRE`, `PROSPECT_ACHETEUR`, `PRESTATAIRE_BTP`, `EMPLOYE`, `ADMIN`) sont stockés dans les `publicMetadata` des utilisateurs Clerk.
-- **Détection des Admins Super-Privilégiés** : Si l'adresse email de l'utilisateur correspond à l'une des adresses listées dans la variable d'environnement `EMAIL_ADMIN` (ex: `hi.cyril@gmail.com`, `puissancedamour@yahoo.fr`), le rôle `ADMIN_SUPER` est automatiquement attribué par le serveur.
+- **Configuration** : Clés `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` (ou `VITE_CLERK_PUBLISHABLE_KEY` selon l'environnement).
+- **Rôles Multiples & Métadonnées** : Les utilisateurs peuvent cumuler plusieurs rôles (ex: `['PROPRIETAIRE', 'ADMIN_SUPER']`). La liste `roles` et le rôle principal `primaryRole` sont stockés dans les `publicMetadata` Clerk.
+- **Détection des Admins Super-Privilégiés** : Si l'adresse email de l'utilisateur correspond à l'une des adresses listées dans la variable d'environnement `EMAIL_ADMIN` (ex: `hi.cyril@gmail.com`, `puissancedamour@yahoo.fr`), le rôle `ADMIN_SUPER` est automatiquement attribué.
 
 ---
 
 ## 3. Synchronisation & API Externe
 
-### A. Intégration Airbnb & Plates-formes Locatives Externes
-Pour chaque bien disponible en location, le propriétaire peut indiquer si le bien est en **Libre Location** (géré 100% dans l'application) ou en **Location Multi-Plateforme (Airbnb, Booking.com)**.
-
-1. **Synchronisation Calendrier iCal (.ics)** :
-   - Importation périodique des flux iCal d'Airbnb et Booking pour bloquer automatiquement les plannings et éviter le surbooking.
-   - Exportation du flux iCal de l'application vers Airbnb.
-2. **API Airbnb Partner / Channel Manager** :
-   - Connexion via des passerelles comme Channex ou API officielle pour récupérer :
-     - Le Taux d'Occupation mensuel / annuel.
-     - Le Revenu Brut Brute et le RevPAR (Revenue Per Available Room).
-     - Les avis voyageurs et historiques d'évaluation.
+### A. Intégration Airbnb & Multi-Plateformes (Stratégie en 3 Phases)
+Pour éviter la dépendance à une API privée fermée, l'intégration locative externe repose sur 3 niveaux progressifs :
+1. **Phase 1 (Immédiate - Standard Universel iCal)** :
+   - Importation et exportation des flux `.ics` (Airbnb, Booking.com) pour bloquer les plages de dates et empêcher le surbooking sans aucune autorisation API spécifique.
+2. **Phase 2 (Avancée - Passerelle Channel Manager)** :
+   - Connexion via un Channel Manager tiers certifié (ex: Channex, Hospitable) pour synchroniser automatiquement les taux d'occupation, les tarifs et les revenus.
+3. **Phase 3 (Fallback Manuel / Déclaratif)** :
+   - Saisie manuelle directe par le propriétaire des revenus et de l'historique d'évaluation si aucune synchro automatique n'est configurée.
 
 ### B. Système de Paiement Intégré (Escrow & Direct Payouts)
-L'application intègre **Stripe Connect** ainsi que les passerelles **Mobile Money (Wave, Orange Money, MTN)** :
-- **Encaissement des Loyer** : Prélèvement SEPA automatisé ou paiement Mobile Money par le locataire.
+L'application intègre **Stripe Connect** ainsi que les prélèvements et versements bancaires directes :
+- **Encaissement des Loyers** : Prélèvement automatisé SEPA / Carte ou virement direct du locataire.
 - **Paiement des Prestataires BTP** : Système de séquestre (*Escrow*) :
   1. Le propriétaire valide le devis BTP et bloque les fonds sur le compte de l'application.
   2. L'artisan réalise la prestation (réparation, rénovation, maçonnerie).
-  3. L'état des lieux ou la validation de fin de travaux libère le paiement directement vers le compte de l'artisan.
+  3. L'état des lieux ou la validation de fin de travaux libère le paiement directement vers l'artisan.
 - **Paiement des Employés / Gestionnaires** : Versement automatique des salaires et commissions.
+
+### C. PWA, Service Worker & Stratégie Offline
+- **Service Worker & Manifest** : Enregistrement d'un Service Worker PWA (`sw.js`) gérant le pré-caching des assets statiques (HTML, CSS, JS, icônes) et la mise en cache dynamique des modèles 3D légers.
+- **Web Push Notifications** : Notifications d'urgence domotiques et rappels de loyer envoyés via l'API Web Push / FCM en arrière-plan.
 
 ---
 
@@ -102,3 +123,5 @@ EMAIL_ADMIN=hi.cyril@gmail.com puissancedamour@yahoo.fr
 EMAIL_PASS=tdev imub pooc uess
 ```
 - `EMAIL_PASS` est utilisé via `Nodemailer` ou `Resend` pour envoyer les alertes critiques, quittances de loyer PDF et notifications de travail aux artisans.
+- Pour les environnements de build (Vite / TanStack Start), les variables préfixées `NEXT_PUBLIC_*` ou `VITE_*` sont automatiquement exposées au bundler client.
+

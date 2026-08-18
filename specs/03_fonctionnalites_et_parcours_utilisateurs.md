@@ -65,32 +65,36 @@ Pour chaque objet : photo, état (Neuf / Bon / Usé), numéro de série et valeu
 
 ## 3. Annuaire & Page des Membres Scindés (`/members`)
 
-Une page dédiée répertorie l'ensemble des acteurs inscrits sur la plate-forme, séparés par onglets étanches et rôles :
+Une page dédiée répertorie l'ensemble des acteurs inscrits sur la plate-forme, séparés par 5 onglets étanches selon le rôle principal ou secondaire :
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [ Propriétaires ] │ [ Locataires ] │ [ Prospecteurs ] │ [ Prestataires BTP ]   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│ [ Propriétaires ] │ [ Locataires ] │ [ Prospecteurs ] │ [ Prestataires BTP ] │ [ Employés ] │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 1. **Onglet Propriétaires** : Liste des investisseurs avec le nombre de biens possédés et le taux d'occupation global.
-2. **Onglet Locataires** : Liste des occupants actuels, état des paiements de loyers (À jour / En retard) et contrat associé.
-3. **Onglet Prospecteurs / Acheteurs** : Liste des acquéreurs potentiels ayant soumis une offre d'achat ou une réservation.
+2. **Onglet Locataires** : Liste des occupants actuels, statut du contrat de bail `Lease` associé, état des paiements de loyers (À jour / En retard) et bouton "Générer Quittance PDF".
+3. **Onglet Prospecteurs / Acheteurs** : Liste des acquéreurs potentiels ayant soumis une offre d'achat `PurchaseOffer` ou une réservation.
 4. **Onglet Prestataires BTP & Services** :
    - Classés par corps de métier (Maçonnerie, Plomberie, Électricité, Peinture, Menuiserie, Nettoyage).
-   - Affichage de la note moyenne, des avis, du tarif horaire et du bouton "Mandater / Demander un Devis".
+   - Affichage de la note moyenne `ratingAverage`, des avis `Review`, du tarif horaire et du bouton "Mandater / Demander un Devis".
+5. **Onglet Employés & Gestionnaires** :
+   - Liste des gestionnaires locatifs et techniciens salariés internes.
+   - Biens assignés, salaire fixe et commissions sur encaissements.
 
 ---
 
 ## 4. Parcours Dédié aux Artisans BTP & Marketplace de Services
 
-1. **Publication d'un Besoins d'Intervention** : Le propriétaire ou locataire signale une panne ou un projet de rénovation (ex: "Remplacement chauffe-eau").
+1. **Publication d'un Besoin d'Intervention** : Le propriétaire, le gestionnaire ou le locataire signale une panne ou un projet de rénovation (ex: "Remplacement chauffe-eau").
 2. **Notification Subordonnée** : Les prestataires de la spécialité `PLOMBERIE` reçoivent une notification instantanée.
 3. **Soumission de Devis** : L'artisan envoie un devis chiffré directement dans l'application.
 4. **Séquestre et Paiement en App** :
    - Le propriétaire valide le devis. Les fonds sont bloqués en séquestre (`ESCROW`).
    - L'artisan effectue les travaux et prend une photo "Après".
-   - Le propriétaire valide l'intervention : le paiement est débloqué immédiatement vers le compte Mobile Money ou RIB de l'artisan.
+   - Le propriétaire valide l'intervention : le paiement est débloqué immédiatement vers le compte ou le RIB de l'artisan.
+5. **Avis & Notation** : Le propriétaire ou gestionnaire dépose une note et un avis (`Review`) sur la prestation de l'artisan.
 
 ---
 
@@ -101,3 +105,5 @@ Chaque profil dispose d'un flux de notifications distinct :
 - **Locataire** : Rappel d'échéance de loyer, code PIN provisoire de serrure généré, validation de demande d'intervention BTP.
 - **Prospecteur / Acheteur** : Confirmation de rendez-vous de visite 3D, statut d'acceptation de l'offre d'achat.
 - **Prestataires BTP** : Appel d'offres dans sa zone géographique, déblocage des fonds de paiement de facture.
+- **Employé / Gestionnaire** : Tâches d'état des lieux assignées, nouvelles pannes signalées sur son parc de biens.
+
